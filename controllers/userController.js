@@ -25,7 +25,7 @@ const index = async (req, res) => {
 
     if (user) {
         res.status(200).json(user);
-    } else { 
+    } else {
         res.status(500)
         throw new Error('Invalid user data');
     }
