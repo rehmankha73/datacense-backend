@@ -1,16 +1,23 @@
 // Imports
 import express from 'express';
 import connectToDB from './config/database.js';
-import bodyParser from 'body-parser';
+import dotenv from "dotenv";
+import cors from "cors";
 
 import adminRoutes from './routes/adminRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 
-const app = express()
-const port = 3000
 
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+const app = express()
+const port = 5000
+
+// For ENV variables
+dotenv.config();
+
+// For Direct Browser Request
+app.use(cors())
+// For getting request body
+app.use(express.json())
 
 // Connect to database
 connectToDB();

@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const connectToMongoDb = async () => {
     try {
         mongoose.set('strictQuery', true);
-        const conn = await mongoose.connect('mongodb://localhost:27017/datacense',
+        const conn = await mongoose.connect(process.env.DATABASE_URL,
             {
                 // useFindAndModify: false,
                 useNewUrlParser: true,
