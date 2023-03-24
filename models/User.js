@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, {Schema} from 'mongoose';
 
 const UserSchema = new mongoose.Schema({
     name: {
@@ -12,7 +12,15 @@ const UserSchema = new mongoose.Schema({
     veteran: {
         type: Boolean,
         default: false
-    }
+    },
+    parent: {
+        type: Schema.Types.ObjectId,
+        ref: 'User' // optional, if you want to reference another model
+    },
+    children: [{
+        type: Schema.Types.ObjectId,
+        ref: 'User' // optional, if you want to reference another model
+    }]
 });
 
 const User = new mongoose.model("User", UserSchema);
