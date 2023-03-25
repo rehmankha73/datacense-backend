@@ -11,7 +11,7 @@ router.route("/auth/sign-up").post(signUp);
 // Sign in route
 router.route("/auth/sign-in").post(signIn);
 
-// Auth User
+// Admin Profile route
 router.route('/profile').get(authMiddleware, profile);
 
 export default router

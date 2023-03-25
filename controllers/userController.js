@@ -5,15 +5,18 @@ import User from '../models/User.js'
 const saveOrUpdateUser = async (userData, parentId) => {
     let user;
 
+    // Check if user exists
     let userExists = userData._id && await User.findOne({ _id: new ObjectId(userData._id) });
 
     if (userExists) {
+        // If exists then update the user
         user = await User.findByIdAndUpdate(
             userData._id,
             userData,
             {new: true, upsert: true}
         );
     } else {
+        // If not exists then create the user
         user = new User(userData);
         user.parent = parentId;
         await user.save();
@@ -21,8 +24,7 @@ const saveOrUpdateUser = async (userData, parentId) => {
 
     const childrenIds = [];
 
-    console.log('userData2: ', userData);
-
+    // If the user has children then recursively call the function to save or update the children & collect their ids
     if (userData.children && userData.children.length > 0) {
         for (const childData of userData.children) {
             const child = await saveOrUpdateUser(childData, user._id);
@@ -30,6 +32,7 @@ const saveOrUpdateUser = async (userData, parentId) => {
         }
     }
 
+    // If the user has children then update the children ids in the user
     if (childrenIds.length > 0) {
         user.children = childrenIds;
         await user.save();
@@ -57,10 +60,8 @@ export const createAndUpdateUsers = async (req, res) => {
 // ************* USER WITH AT LEAST ONE CHILD *******************
 export const userWithChildren = async (req, res) => {
     try {
-        const recordsWithChildren = await User.find({ children: { $exists: true, $not: { $size: 0 } } }).populate('children');
-
-        // await populateChildrenRecursively(recordsWithChildren);
-
+        // Find all users with at least one child
+        const recordsWithChildren = await User.find({ children: { $exists: true, $not: { $size: 0 } } });
         res.status(200).json({data: recordsWithChildren});
     } catch (error) {
         res.status(500).json({error: 'Error fetching records'});
@@ -73,6 +74,7 @@ export const userWithChildren = async (req, res) => {
 const populateChildrenRecursively = async (record) => {
     await record.populate('children');
     for (const child of record.children) {
+        // Recursively populate children
         await populateChildrenRecursively(child);
     }
 };
@@ -86,6 +88,7 @@ export const userWithPopulatedChildren = async (req, res) => {
             return res.status(404).json({ error: 'Record not found' });
         }
 
+        // Populate children recursively
         await populateChildrenRecursively(record);
         res.status(200).json({data: record});
     } catch (error) {
@@ -95,15 +98,16 @@ export const userWithPopulatedChildren = async (req, res) => {
 }
 // **************** Get record with infinite child population by ID **********************
 
-// ***************** Get all records with pagination, free-text search, infinite child population ************************
+// ***************** Get all records with pagination, free-text search, infinite child population
 export const getAllUsersWithPagination = async (req, res) => {
     try {
         const { page = 1, limit = 10, search } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        // Update search query to include parent_id = null
+        // Users that have no parent
         const searchQuery = { parent: null, ...search ? { $text: { $search: search } } : {} };
 
+        // Find records with pagination
         const records = await User.find(searchQuery)
             .skip(skip)
             .limit(parseInt(limit));
@@ -126,4 +130,4 @@ export const getAllUsersWithPagination = async (req, res) => {
         res.status(500).json({ error: 'Error fetching records with pagination, search, child population, and parent_id = null' });
     }
 };
-// ***************** Get all records with pagination, free-text search, infinite child population ************************
+// ***************** Get all records with pagination, free-text search, infinite child population

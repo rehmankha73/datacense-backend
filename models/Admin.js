@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
 
 const AdminSchema = new mongoose.Schema({
     email: {
@@ -12,10 +11,6 @@ const AdminSchema = new mongoose.Schema({
         required: true,
     }
 });
-
-AdminSchema.methods.comparePassword = function(password) {
-    return bcrypt.compareSync(password, this.password);
-};
 
 const Admin = new mongoose.model("Admin", AdminSchema);
 

@@ -3,79 +3,128 @@ import Admin from "../models/Admin.js";
 import jwt from "jsonwebtoken";
 
 // ********** SignUp **********
-const signUp = async (req, res, next) => {
+export const signUp = async (req, res) => {
+    try {
+        const { email, password } = req.body;
 
-    if (!req.body.email || !req.body.password) {
-        return res.status(400).json({
-            success: false,
-            error: "Send needed parameters",
-            message: "Please fill out all fields"
+        // Input validation
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing Required Fields',
+                message: 'Please provide a valid email and password',
+            });
+        }
+
+        // Hash password
+        const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS);
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        // Create admin record
+        const admin = new Admin({
+            email,
+            password: hashedPassword,
         });
-    }
 
-    const email = req.body.email;
-    const password = bcrypt.hashSync(req.body.password, 10);
+        await admin.save();
 
-    const admin = new Admin({
-        email: email,
-        password: password,
-    });
+        // Generate JWT token
+        const token = jwt.sign(
+            { _id: admin._id, email: admin.email },
+            process.env.JWT_SECRET_KEY,
+            { expiresIn: '1d' }
+        );
 
-    await admin.save();
-    res.status(201).json({
-        success: true, data: admin,
-        access_token: jwt.sign({
-            _id: admin._id,
-            email: admin.email,
-            // 1 day
-            exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24)
-        }, process.env.JWT_SECRET_KEY),
-        message: "Admin created successfully"
-    });
-}
-
-// ********** Login **********
-const signIn = async (req, res, next) => {
-
-    if (!req.body.email || !req.body.password) {
-        return res.status(400).json({
-            success: false,
-            error: "Send needed parameters",
-            message: "Please fill out all fields"
+        return res.status(201).json({
+            success: true,
+            data: admin,
+            access_token: token,
+            message: 'Admin created successfully',
         });
-    }
-
-    const email = req.body.email;
-    const password = req.body.password;
-
-    const admin = await Admin.findOne({email: email}).exec();
-
-    if (!admin || !bcrypt.compare(password, admin.password)) {
-        return res.status(401).json({message: 'Authentication failed. Invalid email or password.'});
-    }
-
-    return res.json({
-        access_token: jwt.sign({
-            _id: admin._id,
-            email: admin.email,
-            // 1 day
-            exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24)
-        }, process.env.JWT_SECRET_KEY)
-    });
-
-}
-
-// ********** Admin Profile **********
-const profile = function (req, res, next) {
-    if (req.admin) {
-        res.send(req.admin);
-    } else {
-        return res.status(401).json({message: 'Auth Failed! Invalid token'});
+    } catch (error) {
+        // Handle errors
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            error: 'Server error',
+            message: 'An unexpected error occurred',
+        });
     }
 };
 
-export {
-    signUp,
-    signIn,
-    profile
-}
+// ********** Login **********
+export const signIn = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        // Input validation
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing Required Fields',
+                message: 'Please provide a valid email and password',
+            });
+        }
+
+        // Find admin by email
+        const admin = await Admin.findOne({ email }).exec();
+
+        // Check if admin exists and password is correct
+        if (!admin || !bcrypt.compare(password, admin.password)) {
+            return res.status(401).json({
+                success: false,
+                error: 'Authentication Failed',
+                message: 'Invalid email or password',
+            });
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { _id: admin._id, email: admin.email },
+            process.env.JWT_SECRET_KEY,
+            { expiresIn: '1d' }
+        );
+
+        return res.json({
+            success: true,
+            access_token: token,
+            message: 'Authentication Successful',
+        });
+    } catch (error) {
+        // Handle errors
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            error: 'Server error',
+            message: 'An unexpected error occurred',
+        });
+    }
+};
+
+
+// ********** Admin Profile **********
+export const profile = function (req, res) {
+    try {
+        if (!req.admin) {
+            return res.status(401).json({
+                success: false,
+                error: 'Authentication Required',
+                message: 'You must be logged in to access this resource',
+            });
+        }
+
+        res.json({
+            success: true,
+            data: req.admin,
+            message: 'Profile retrieved successfully',
+        });
+    } catch (error) {
+        // Handle errors
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            error: 'Server error',
+            message: 'An unexpected error occurred',
+        });
+    }
+};

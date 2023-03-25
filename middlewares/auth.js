@@ -5,10 +5,8 @@ import Admin from "../models/Admin.js";
 const authMiddleware = async (req, res, next) => {
     let verifyToken;
 
-    if (req.headers && req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Bearer') {
+    if (req?.headers?.authorization.split(' ')[0] === 'Bearer') {
         verifyToken = jsonwebtoken.verify(req.headers.authorization.split(' ')[1], process.env.JWT_SECRET_KEY);
-    } else {
-        verifyToken = null;
     }
 
     if (!verifyToken) res.status(401).json({message: 'Auth Failed! Invalid token'});

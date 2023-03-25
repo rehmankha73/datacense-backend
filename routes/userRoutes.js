@@ -1,6 +1,9 @@
-'use strict';
-
-import { createAndUpdateUsers, getAllUsersWithPagination, userWithChildren, userWithPopulatedChildren } from "../controllers/userController.js";
+import {
+    createAndUpdateUsers,
+    getAllUsersWithPagination,
+    userWithChildren,
+    userWithPopulatedChildren
+} from "../controllers/userController.js";
 import express from 'express';
 import {authMiddleware} from "../middlewares/auth.js";
 
