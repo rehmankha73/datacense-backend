@@ -6,18 +6,20 @@ const saveOrUpdateUser = async (userData, parentId) => {
     let user;
 
     // Check if user exists
-    let userExists = userData._id && await User.findOne({ _id: new ObjectId(userData._id) });
+    let userExists = userData._id && ObjectId.isValid(userData._id)  && await User.findOne({ _id: new ObjectId(userData._id) });
 
     if (userExists) {
+        const { children, ...restData } = userData;
         // If exists then update the user
         user = await User.findByIdAndUpdate(
             userData._id,
-            userData,
+            restData,
             {new: true, upsert: true}
         );
     } else {
         // If not exists then create the user
-        user = new User(userData);
+        const { children, ...restData } = userData;
+        user = new User(restData);
         user.parent = parentId;
         await user.save();
     }
@@ -44,7 +46,6 @@ const saveOrUpdateUser = async (userData, parentId) => {
 export const createAndUpdateUsers = async (req, res) => {
     try {
         const userData = req.body.user;
-        console.log('userData1: ', userData);
         const savedUser = await saveOrUpdateUser(userData, null);
 
         res.status(201).json({message: 'Record created or updated successfully', data: savedUser});
@@ -122,7 +123,7 @@ export const getAllUsersWithPagination = async (req, res) => {
 
         res.status(200).json({
             data: records,
-            totalPages: Math.ceil(totalRecords / parseInt(limit)),
+            totalRecords,
             currentPage: parseInt(page),
         });
     } catch (error) {
