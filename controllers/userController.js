@@ -21,6 +21,8 @@ const saveOrUpdateUser = async (userData, parentId) => {
 
     const childrenIds = [];
 
+    console.log('userData2: ', userData);
+
     if (userData.children && userData.children.length > 0) {
         for (const childData of userData.children) {
             const child = await saveOrUpdateUser(childData, user._id);
@@ -38,7 +40,8 @@ const saveOrUpdateUser = async (userData, parentId) => {
 
 export const createAndUpdateUsers = async (req, res) => {
     try {
-        const userData = req.body.users;
+        const userData = req.body.user;
+        console.log('userData1: ', userData);
         const savedUser = await saveOrUpdateUser(userData, null);
 
         res.status(201).json({message: 'Record created or updated successfully', data: savedUser});
