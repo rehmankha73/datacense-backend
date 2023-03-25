@@ -65,9 +65,6 @@ const userWithChildren = async (req, res) => {
 
 // **************** Route to get a record with infinite child population by ID **********************
 // Helper function to convert a plain JavaScript object to a Mongoose document
-const convertToMongooseDoc = (obj) => {
-    return new User(obj);
-};
 
 const populateChildrenRecursively = async (record) => {
     await record.populate('children');
@@ -79,13 +76,12 @@ const populateChildrenRecursively = async (record) => {
 const userWithPopulatedChildren = async (req, res) => {
     try {
         const recordId = req.params.id;
-        const recordObj = await User.findById(recordId).lean();
+        const record = await User.findById(recordId);
 
-        if (!recordObj) {
+        if (!record) {
             return res.status(404).json({ error: 'Record not found' });
         }
 
-        const record = convertToMongooseDoc(recordObj);
         await populateChildrenRecursively(record);
         res.status(200).json({data: record});
     } catch (error) {
@@ -98,23 +94,22 @@ const userWithPopulatedChildren = async (req, res) => {
 // ***************** Get all records with pagination, free-text search, infinite child population ************************
 const getAllUsersWithPagination = async (req, res) => {
     try {
-        const {page = 1, limit = 10, search} = req.query;
+        const { page = 1, limit = 10, search } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        // Update search query to include parent = null
-        const searchQuery = {parent: null, ...search ? {$text: {$search: search}} : {}};
+        // Update search query to include parent_id = null
+        const searchQuery = { parent: null, ...search ? { $text: { $search: search } } : {} };
 
         const records = await User.find(searchQuery)
-            .populate('children')
             .skip(skip)
             .limit(parseInt(limit));
 
         // Populate children recursively for each record
-        // for (const record of records) {
-        //     await populateChildrenRecursively(record);
-        // }
+        for (const record of records) {
+            await populateChildrenRecursively(record);
+        }
 
-        // Update totalRecords to include parent = null condition
+        // Update totalRecords to include parent_id = null condition
         const totalRecords = await User.countDocuments(searchQuery);
 
         res.status(200).json({
@@ -123,10 +118,12 @@ const getAllUsersWithPagination = async (req, res) => {
             currentPage: parseInt(page),
         });
     } catch (error) {
-        res.status(500).json({error: 'Error fetching records with pagination, search, child population, and parent = null'});
+        console.log("Error: ", error);
+        res.status(500).json({ error: 'Error fetching records with pagination, search, child population, and parent_id = null' });
     }
-}
+};
 // ***************** Get all records with pagination, free-text search, infinite child population ************************
+
 
 
 export {
