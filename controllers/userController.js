@@ -1,78 +1,51 @@
+import {ObjectId} from 'mongodb';
 import User from '../models/User.js'
 
 // ******** CREATE ********
-    // const saveOrUpdatePerson = async (personData, parentId) => {
-//     let user;
-//
-//     const person = await User.findOne({_id: personData._id}).exec();
-//     console.log('person: ', person);
-//
-//     if (person) {
-//         user = await User.findByIdAndUpdate(
-//             personData._id,
-//             personData,
-//             { new: true, upsert: true }
-//         );
-//     } else {
-//         user = new User(personData);
-//         user.parent = parentId;
-//         await user.save();
-//     }
-//
-//     const childrenIds = [];
-//
-//     if (personData.children && personData.children.length > 0) {
-//         for (const childData of personData.children) {
-//             const child = await saveOrUpdatePerson(childData, user._id);
-//             childrenIds.push(child._id);
-//         }
-//     }
-//
-//     if (childrenIds.length > 0) {
-//         user.children = childrenIds;
-//         await user.save();
-//     }
-//
-//     return user;
-// };
+const saveOrUpdateUser = async (userData, parentId) => {
+    let user;
 
-const create = async (req, res) => {
+    let userExists = userData._id && await User.findOne({ _id: new ObjectId(userData._id) });
 
-    const record = {
-        name: req.body.name,
-        age: req.body.age,
-        veteran: req.body.veteran,
-        parent: req.body.parent,
-        children: req.body.children,
+    if (userExists) {
+        user = await User.findByIdAndUpdate(
+            userData._id,
+            userData,
+            {new: true, upsert: true}
+        );
+    } else {
+        user = new User(userData);
+        user.parent = parentId;
+        await user.save();
     }
 
-    console.log('record: ', record);
+    const childrenIds = [];
 
-    // const user = await saveOrUpdatePerson(personData, personData.parent);
+    if (userData.children && userData.children.length > 0) {
+        for (const childData of userData.children) {
+            const child = await saveOrUpdateUser(childData, user._id);
+            childrenIds.push(child._id);
+        }
+    }
 
-    traverse(record);
+    if (childrenIds.length > 0) {
+        user.children = childrenIds;
+        await user.save();
+    }
 
+    return user;
+};
 
-    // console.log('req.body: ', req.body);
-    // if (req.body.children && req.body.children.length > 0) {
-    //     await findOneAndCreate(req.body.children);
-    // } else {
-    //     const _data = {
-    //         name: req.body.name,
-    //         age: req.body.age,
-    //         veteran: req.body.veteran,
-    //         parent: req.body.parent,
-    //         children: [],
-    //     };
-    //
-    //     try {
-    //         const user = await User.create(_data);
-    //         res.status(201).json(user);
-    //     } catch (error) {
-    //         console.log('error: ', error);
-    //         res.status(500)
-    //     }
-    // }
+const create = async (req, res) => {
+    try {
+        const userData = req.body.users;
+        const savedUser = await saveOrUpdateUser(userData, null);
+
+        res.status(201).json({message: 'Record created or updated successfully', data: savedUser});
+    } catch (error) {
+        console.log("Error: ", error);
+        res.status(500).json({error: 'Error processing the request'});
+    }
 }
 
 function traverse(node) {
@@ -112,16 +85,22 @@ async function createUser(user) {
         res.status(500)
     }
 }
+
 // ******** END CREATE ********
 
 
 // ************* USER WITH AT LEAST ONE CHILD *******************
 const userWithChildren = async (req, res) => {
     try {
-        const recordsWithChildren = await User.find({ children: { $exists: true, $not: { $size: 0 } } }).populate('children').exec();
-        res.status(200).json({ data: recordsWithChildren });
+        const recordsWithChildren = await User.find({
+            children: {
+                $exists: true,
+                $not: {$size: 0}
+            }
+        }).populate('children').exec();
+        res.status(200).json({data: recordsWithChildren});
     } catch (error) {
-        res.status(500).json({ error: 'Error fetching records' });
+        res.status(500).json({error: 'Error fetching records'});
     }
 }
 // ************* USER WITH AT LEAST ONE CHILD *******************
@@ -141,25 +120,25 @@ const userWithPopulatedChildren = async (req, res) => {
         const record = await User.findById(recordId).populate('parent').populate('children').exec();
 
         if (!record) {
-            return res.status(404).json({ error: 'Record not found' });
+            return res.status(404).json({error: 'Record not found'});
         }
 
         // await populateChildrenRecursively(record);
-        res.status(200).json({ data: record });
+        res.status(200).json({data: record});
     } catch (error) {
-        res.status(500).json({ error: 'Error fetching record with child population' });
+        res.status(500).json({error: 'Error fetching record with child population'});
     }
 }
 // **************** Route to get a record with infinite child population by ID **********************
 
-// ***************** GET ALL USERS ************************
-const index = async (req, res) => {
+// ***************** Get all records with pagination, free-text search, infinite child population ************************
+const getAllUsersWithPagination = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search } = req.query;
+        const {page = 1, limit = 10, search} = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        // Update search query to include parent_id = null
-        const searchQuery = { parent_id: null, ...search ? { $text: { $search: search } } : {} };
+        // Update search query to include parent = null
+        const searchQuery = {parent: null, ...search ? {$text: {$search: search}} : {}};
 
         const records = await User.find(searchQuery)
             .populate('children')
@@ -171,7 +150,7 @@ const index = async (req, res) => {
         //     await populateChildrenRecursively(record);
         // }
 
-        // Update totalRecords to include parent_id = null condition
+        // Update totalRecords to include parent = null condition
         const totalRecords = await User.countDocuments(searchQuery);
 
         res.status(200).json({
@@ -180,16 +159,15 @@ const index = async (req, res) => {
             currentPage: parseInt(page),
         });
     } catch (error) {
-        res.status(500).json({ error: 'Error fetching records with pagination, search, child population, and parent_id = null' });
+        res.status(500).json({error: 'Error fetching records with pagination, search, child population, and parent = null'});
     }
 }
-// ***************** GET ALL USERS ************************
+// ***************** Get all records with pagination, free-text search, infinite child population ************************
 
 
 export {
     create,
     userWithChildren,
     userWithPopulatedChildren,
-    index
-    // saveOrUpdatePerson
+    getAllUsersWithPagination
 }
