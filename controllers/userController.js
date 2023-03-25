@@ -57,7 +57,10 @@ export const createAndUpdateUsers = async (req, res) => {
 // ************* USER WITH AT LEAST ONE CHILD *******************
 export const userWithChildren = async (req, res) => {
     try {
-        const recordsWithChildren = await User.find({ children: { $exists: true, $not: { $size: 0 } } });
+        const recordsWithChildren = await User.find({ children: { $exists: true, $not: { $size: 0 } } }).populate('children');
+
+        // await populateChildrenRecursively(recordsWithChildren);
+
         res.status(200).json({data: recordsWithChildren});
     } catch (error) {
         res.status(500).json({error: 'Error fetching records'});
