@@ -48,56 +48,13 @@ const create = async (req, res) => {
     }
 }
 
-function traverse(node) {
-    // user001
-    // Check if node is a user and doesn't exist in the users collection
-    if (!userExists(node._id)) {
-        // Create a new user in the users collection
-        createUser(node);
-    }
-
-    // Check if node has children and traverse them recursively
-    if (node.children && node.children.length > 0) {
-        node.children.forEach(child => traverse(child));
-    }
-
-
-}
-
-async function userExists(userId) {
-    // Check if user exists in the users collection
-    const user = User.findOne({_id: userId}).exec();
-    // Return true or false
-    if (user) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-async function createUser(user) {
-    // Create a new user in the users collection
-    try {
-        const user = await User.create(user);
-        console.log('user: ', user);
-    } catch (error) {
-        console.log('error: ', error);
-        res.status(500)
-    }
-}
-
 // ******** END CREATE ********
 
 
 // ************* USER WITH AT LEAST ONE CHILD *******************
 const userWithChildren = async (req, res) => {
     try {
-        const recordsWithChildren = await User.find({
-            children: {
-                $exists: true,
-                $not: {$size: 0}
-            }
-        }).populate('children').exec();
+        const recordsWithChildren = await User.find({ children: { $exists: true, $not: { $size: 0 } } });
         res.status(200).json({data: recordsWithChildren});
     } catch (error) {
         res.status(500).json({error: 'Error fetching records'});
@@ -107,8 +64,13 @@ const userWithChildren = async (req, res) => {
 
 
 // **************** Route to get a record with infinite child population by ID **********************
+// Helper function to convert a plain JavaScript object to a Mongoose document
+const convertToMongooseDoc = (obj) => {
+    return new User(obj);
+};
+
 const populateChildrenRecursively = async (record) => {
-    await record.populate('children').exec();
+    await record.populate('children');
     for (const child of record.children) {
         await populateChildrenRecursively(child);
     }
@@ -117,15 +79,17 @@ const populateChildrenRecursively = async (record) => {
 const userWithPopulatedChildren = async (req, res) => {
     try {
         const recordId = req.params.id;
-        const record = await User.findById(recordId).populate('parent').populate('children').exec();
+        const recordObj = await User.findById(recordId).lean();
 
-        if (!record) {
-            return res.status(404).json({error: 'Record not found'});
+        if (!recordObj) {
+            return res.status(404).json({ error: 'Record not found' });
         }
 
-        // await populateChildrenRecursively(record);
+        const record = convertToMongooseDoc(recordObj);
+        await populateChildrenRecursively(record);
         res.status(200).json({data: record});
     } catch (error) {
+        console.log("Error: ", error );
         res.status(500).json({error: 'Error fetching record with child population'});
     }
 }
