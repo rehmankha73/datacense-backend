@@ -16,8 +16,6 @@ const signUp = async (req, res, next) => {
     const email = req.body.email;
     const password = bcrypt.hashSync(req.body.password, 10);
 
-    // const password = await bcrypt.hash(req.body.password, 10);
-
     const admin = new Admin({
         email: email,
         password: password,
