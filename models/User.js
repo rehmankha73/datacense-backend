@@ -19,11 +19,11 @@ const UserSchema = new mongoose.Schema({
     },
     parent: {
         type: Schema.Types.ObjectId,
-        ref: 'User' 
+        ref: 'User'
     },
     children: [{
         type: Schema.Types.ObjectId,
-        ref: 'User' 
+        ref: 'User'
     }]
 });
 

@@ -1,7 +1,7 @@
 import {ObjectId} from 'mongodb';
 import User from '../models/User.js'
 
-// ******** CREATE ********
+// ******** CREATE USERS AND UPDATE IF ALREADY EXISTS ********
 const saveOrUpdateUser = async (userData, parentId) => {
     let user;
 
@@ -36,7 +36,7 @@ const saveOrUpdateUser = async (userData, parentId) => {
     return user;
 };
 
-const create = async (req, res) => {
+export const createAndUpdateUsers = async (req, res) => {
     try {
         const userData = req.body.users;
         const savedUser = await saveOrUpdateUser(userData, null);
@@ -48,11 +48,11 @@ const create = async (req, res) => {
     }
 }
 
-// ******** END CREATE ********
+// ******** CREATE USERS AND UPDATE IF ALREADY EXISTS ********
 
 
 // ************* USER WITH AT LEAST ONE CHILD *******************
-const userWithChildren = async (req, res) => {
+export const userWithChildren = async (req, res) => {
     try {
         const recordsWithChildren = await User.find({ children: { $exists: true, $not: { $size: 0 } } });
         res.status(200).json({data: recordsWithChildren});
@@ -63,9 +63,7 @@ const userWithChildren = async (req, res) => {
 // ************* USER WITH AT LEAST ONE CHILD *******************
 
 
-// **************** Route to get a record with infinite child population by ID **********************
-// Helper function to convert a plain JavaScript object to a Mongoose document
-
+// **************** Get record with infinite child population by ID **********************
 const populateChildrenRecursively = async (record) => {
     await record.populate('children');
     for (const child of record.children) {
@@ -73,7 +71,7 @@ const populateChildrenRecursively = async (record) => {
     }
 };
 
-const userWithPopulatedChildren = async (req, res) => {
+export const userWithPopulatedChildren = async (req, res) => {
     try {
         const recordId = req.params.id;
         const record = await User.findById(recordId);
@@ -89,10 +87,10 @@ const userWithPopulatedChildren = async (req, res) => {
         res.status(500).json({error: 'Error fetching record with child population'});
     }
 }
-// **************** Route to get a record with infinite child population by ID **********************
+// **************** Get record with infinite child population by ID **********************
 
 // ***************** Get all records with pagination, free-text search, infinite child population ************************
-const getAllUsersWithPagination = async (req, res) => {
+export const getAllUsersWithPagination = async (req, res) => {
     try {
         const { page = 1, limit = 10, search } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -123,12 +121,3 @@ const getAllUsersWithPagination = async (req, res) => {
     }
 };
 // ***************** Get all records with pagination, free-text search, infinite child population ************************
-
-
-
-export {
-    create,
-    userWithChildren,
-    userWithPopulatedChildren,
-    getAllUsersWithPagination
-}
